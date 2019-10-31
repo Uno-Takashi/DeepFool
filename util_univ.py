@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from pathlib import Path
 
 from prepare_imagenet_data import *
 import matplotlib.pyplot as plt
@@ -102,3 +103,15 @@ def fooling_rate_calc_all(v,dataset,f,target,batch_size=100):
     fooling_rate = float(np.sum(est_labels_pert != est_labels_orig) / float(num_images))
     target_fooling_rate = float(np.sum(est_labels_pert == target) / float(num_images))
     return fooling_rate,target_fooling_rate
+
+
+
+def export_dataset(dataset,output_dir="output/"):
+    output_dir = Path(output_dir)
+    dataset=undo_image_list(dataset)
+
+    data_num=int(np.shape(dataset)[0])
+
+    for x in range(data_num):
+        out_image=dataset[x]
+        cv2.imwrite(str(output_dir.joinpath(str(x).zfill(5))) + ".png", out_image)

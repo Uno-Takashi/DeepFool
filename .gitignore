@@ -348,4 +348,6 @@ healthchecksdb
 /data/inception5h.zip
 /data/imagenet_data.npy
 
+/output/*
+
 *.sqlite

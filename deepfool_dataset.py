@@ -1,6 +1,8 @@
 import numpy as np
 from deepfool import deepfool
 
+from util_univ import *
+
 def proj_lp(v, xi, p):
     # Project on the lp ball centered at 0 and of radius xi
 
