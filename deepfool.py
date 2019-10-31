@@ -1,6 +1,7 @@
 import numpy as np
+from util_univ import *
 
-def deepfool(image, f, grads, num_classes=10, overshoot=0.02, max_iter=50):
+def deepfool(image, f, grads, num_classes=10, overshoot=0.02, max_iter=100):
 
     """
        :param image: Image of size HxWx3
@@ -51,7 +52,7 @@ def deepfool(image, f, grads, num_classes=10, overshoot=0.02, max_iter=50):
         r_tot = r_tot + r_i
 
         # compute new perturbed image
-        pert_image = image + (1+overshoot)*r_tot
+        pert_image = avg_add_clip_pert(avg_img=image,v=(1+overshoot)*r_tot)
         loop_i += 1
 
         # compute new label
@@ -60,4 +61,4 @@ def deepfool(image, f, grads, num_classes=10, overshoot=0.02, max_iter=50):
 
     r_tot = (1+overshoot)*r_tot
 
-    return r_tot, loop_i, k_i, pert_image
+    return r_tot, loop_i,label, k_i, pert_image

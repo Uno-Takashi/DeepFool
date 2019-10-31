@@ -13,10 +13,10 @@ if sys.version_info[0] >= 3:
 else:
     from urllib import urlretrieve
 
+from deepfool_dataset import *
 
-from universal_pert import universal_perturbation
 device = '/gpu:0'
-num_classes = 20
+num_classes = 50
 
 def jacobian(y_flat, x, inds):
     n = num_classes # Not really necessary, just a quick fix.
@@ -80,46 +80,37 @@ if __name__ == '__main__':
         print('>> Computing feedforward function...')
         def f(image_inp): return persisted_sess.run(persisted_output, feed_dict={persisted_input: np.reshape(image_inp, (-1, 224, 224, 3))})
 
-        file_perturbation = os.path.join('data', 'universal.npy')
 
-        if os.path.isfile(file_perturbation) == 0:
+        # TODO: Optimize this construction part!
+        print('>> Compiling the gradient tensorflow functions. This might take some time...')
+        y_flat = tf.reshape(persisted_output, (-1,))
+        inds = tf.placeholder(tf.int32, shape=(num_classes,))
+        dydx = jacobian(y_flat,persisted_input,inds)
 
-            # TODO: Optimize this construction part!
-            print('>> Compiling the gradient tensorflow functions. This might take some time...')
-            y_flat = tf.reshape(persisted_output, (-1,))
-            inds = tf.placeholder(tf.int32, shape=(num_classes,))
-            dydx = jacobian(y_flat,persisted_input,inds)
+        print('>> Computing gradient function...')
+        def grad_fs(image_inp, indices): return persisted_sess.run(dydx, feed_dict={persisted_input: image_inp, inds: indices}).squeeze(axis=1)
 
-            print('>> Computing gradient function...')
-            def grad_fs(image_inp, indices): return persisted_sess.run(dydx, feed_dict={persisted_input: image_inp, inds: indices}).squeeze(axis=1)
+        datafile = os.path.join('data', 'imagenet_data.npy')
+        if os.path.isfile(datafile) == 0:
+            print('>> Creating pre-processed imagenet data...')
+            X = create_imagenet_npy(path_train_imagenet)
 
-            # Load/Create data
-            datafile = os.path.join('data', 'imagenet_data.npy')
-            if os.path.isfile(datafile) == 0:
-                print('>> Creating pre-processed imagenet data...')
-                X = create_imagenet_npy(path_train_imagenet)
+            print('>> Saving the pre-processed imagenet data')
+            if not os.path.exists('data'):
+                os.makedirs('data')
 
-                print('>> Saving the pre-processed imagenet data')
-                if not os.path.exists('data'):
-                    os.makedirs('data')
-
-                # Save the pre-processed images
-                # Caution: This can take take a lot of space. Comment this part to discard saving.
-                np.save(os.path.join('data', 'imagenet_data.npy'), X)
-
-            else:
-                print('>> Pre-processed imagenet data detected')
-                X = np.load(datafile)
-
-            # Running universal perturbation
-            v = universal_perturbation(X, f, grad_fs, delta=0.2,num_classes=num_classes)
-
-            # Saving the universal perturbation
-            np.save(os.path.join(file_perturbation), v)
+            # Save the pre-processed images
+            # Caution: This can take take a lot of space. Comment this part to discard saving.
+            np.save(os.path.join('data', 'imagenet_data.npy'), X)
 
         else:
-            print('>> Found a pre-computed universal perturbation! Retrieving it from ", file_perturbation')
-            v = np.load(file_perturbation)
+            print('>> Pre-processed imagenet data detected')
+            X = np.load(datafile)
+
+        # Running universal perturbation
+        deepfools = deepfool_dataset(X, f, grad_fs,num_classes=num_classes)
+
+        np.save("data/doopfools.npy",undo_image_list(deepfools))
 
         print('>> Testing the universal perturbation on an image')
 
