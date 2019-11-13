@@ -78,7 +78,8 @@ if __name__ == '__main__':
         persisted_output = persisted_sess.graph.get_tensor_by_name("softmax2_pre_activation:0")
 
         print('>> Computing feedforward function...')
-        def f(image_inp): return persisted_sess.run(persisted_output, feed_dict={persisted_input: np.reshape(image_inp, (-1, 224, 224, 3))})
+        def f_float(image_inp): return persisted_sess.run(persisted_output, feed_dict={persisted_input: np.reshape(image_inp, (-1, 224, 224, 3))})
+        def f(image_inp): return persisted_sess.run(persisted_output, feed_dict={persisted_input: np.reshape(image_inp, (-1, 224, 224, 3)).astype(np.uint8)})
 
 
         # TODO: Optimize this construction part!
@@ -90,7 +91,7 @@ if __name__ == '__main__':
         print('>> Computing gradient function...')
         def grad_fs(image_inp, indices): return persisted_sess.run(dydx, feed_dict={persisted_input: image_inp, inds: indices}).squeeze(axis=1)
 
-        datafile = os.path.join('data', 'imagenet_data.npy')
+        datafile = os.path.join('data', 'imagenet_vals_data.npy')
         if os.path.isfile(datafile) == 0:
             print('>> Creating pre-processed imagenet data...')
             X = create_imagenet_npy(path_train_imagenet)
@@ -105,10 +106,11 @@ if __name__ == '__main__':
 
         else:
             print('>> Pre-processed imagenet data detected')
-            X = np.load(datafile)
+            X = np.load(datafile)[0:500]
 
         # Running universal perturbation
         deepfools = deepfool_dataset(X, f, grad_fs,num_classes=num_classes)
 
         np.save("data/doopfools.npy",undo_image_list(deepfools))
         export_dataset(undo_image_list(deepfools))
+        export_dataset(X,output_dir="output2")
